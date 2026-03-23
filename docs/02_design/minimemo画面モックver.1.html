@@ -1,0 +1,780 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimemo - Ultimate Interactive Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+  /* =========================================
+     Theme Variables
+  ========================================= */
+  :root {
+    /* Light Theme (Default) */
+    --app-bg: radial-gradient(circle at top left, #f8fafc, #e2e8f0 70%);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.8);
+    --glass-shadow: 0 24px 48px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 1);
+    --glass-shadow-focus: 0 32px 64px rgba(0, 0, 0, 0.08), 0 0 30px rgba(14, 165, 233, 0.15), inset 0 1px 0 rgba(255, 255, 255, 1);
+    
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-faint: #cbd5e1;
+    --accent: #0ea5e9;
+    --accent-glow: rgba(14, 165, 233, 0.3);
+    --danger: #ef4444;
+    
+    --item-hover-bg: rgba(0, 0, 0, 0.04);
+    --shortcut-bg: rgba(0, 0, 0, 0.06);
+    --shortcut-text: #475569;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    
+    --control-bg: rgba(0, 0, 0, 0.03);
+    --control-border: rgba(0, 0, 0, 0.06);
+
+    --md-heading: #0284c7;
+    --md-code-bg: rgba(0, 0, 0, 0.05);
+    --md-code-text: #db2777;
+    
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body.dark-theme {
+    /* Dark Theme */
+    --app-bg: radial-gradient(circle at top left, #1f1f23, #0c0c0e 70%);
+    --glass-bg: rgba(24, 24, 27, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --glass-shadow-focus: 0 32px 64px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    
+    --text-main: #f4f4f5;
+    --text-muted: rgba(244, 244, 245, 0.35);
+    --text-faint: rgba(255, 255, 255, 0.15);
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.4);
+    --danger: #fb7185;
+    
+    --item-hover-bg: rgba(255, 255, 255, 0.06);
+    --shortcut-bg: rgba(255, 255, 255, 0.08);
+    --shortcut-text: rgba(255, 255, 255, 0.7);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+
+    --control-bg: rgba(255, 255, 255, 0.03);
+    --control-border: rgba(255, 255, 255, 0.06);
+
+    --md-heading: #38bdf8;
+    --md-code-bg: rgba(255, 255, 255, 0.08);
+    --md-code-text: #f472b6;
+  }
+
+  * { box-sizing: border-box; outline: none; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    background: var(--app-bg);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    color: var(--text-main);
+    transition: background 0.5s ease;
+  }
+
+  /* =========================================
+     Global Layout & Glass Panel
+  ========================================= */
+  .app-wrapper {
+    position: relative;
+    width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: var(--glass-shadow);
+    transition: box-shadow 0.4s ease, border 0.4s ease, background 0.4s ease;
+  }
+
+  .main-window {
+    height: 260px;
+    position: relative;
+    overflow: hidden; /* 設定画面のスライドを隠すため */
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .main-window:focus-within {
+    box-shadow: var(--glass-shadow-focus);
+  }
+
+  /* View Sliding Wrapper */
+  .view-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .view {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.4s var(--ease-out-expo), opacity 0.4s var(--ease-out-expo);
+  }
+
+  /* =========================================
+     Editor View
+  ========================================= */
+  .editor-view {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .show-settings .editor-view {
+    transform: translateX(-30px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Action Buttons */
+  .action-buttons {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+  }
+  .icon-btn {
+    background: transparent; border: none; color: var(--text-muted);
+    cursor: pointer; padding: 6px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .icon-btn:hover { color: var(--text-main); background: var(--item-hover-bg); }
+
+  /* Editor Area */
+  .editor-container-outer {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    margin-bottom: 12px;
+    margin-top: 8px;
+  }
+
+  .line-numbers {
+    width: 32px; text-align: right; padding-right: 12px;
+    color: var(--text-faint); font-size: 15px; line-height: 1.6;
+    user-select: none; overflow: hidden; font-weight: 300;
+  }
+
+  .editor-container {
+    position: relative; flex: 1; overflow: hidden;
+  }
+
+  #highlightLayer, #mainTextarea {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.6;
+    padding: 0; margin: 0; border: none; white-space: pre;
+    overflow-x: auto; overflow-y: auto;
+  }
+
+  #highlightLayer { color: var(--text-main); z-index: 1; pointer-events: none; }
+  #mainTextarea { color: transparent; background: transparent; caret-color: var(--accent); z-index: 2; resize: none; }
+  #mainTextarea::placeholder { color: var(--text-muted); font-weight: 300; }
+  #highlightLayer::-webkit-scrollbar { display: none; }
+  #mainTextarea::-webkit-scrollbar { width: 6px; height: 6px; }
+  #mainTextarea::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+  /* Markdown Highlight Styles */
+  .md-heading { font-weight: 600; color: var(--md-heading); }
+  .md-bold { font-weight: 600; }
+  .md-italic { font-style: italic; opacity: 0.8; }
+  .md-list { color: var(--accent); font-weight: 600; }
+  .md-quote { color: var(--text-muted); border-left: 2px solid var(--text-faint); padding-left: 6px; }
+  .md-code { background: var(--md-code-bg); color: var(--md-code-text); padding: 0 4px; border-radius: 4px; }
+
+  /* Footer */
+  .window-footer {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    user-select: none; border-top: 1px solid var(--glass-border); padding-top: 12px;
+    transition: border 0.4s ease;
+  }
+  .status-bar { font-size: 11px; color: var(--accent); font-weight: 500; }
+  .hint-right { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; align-items: center; }
+  .shortcut { color: var(--shortcut-text); background: var(--shortcut-bg); padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+
+  /* =========================================
+     Settings View (Slide in from right)
+  ========================================= */
+  .settings-view {
+    transform: translateX(30px);
+    opacity: 0;
+    pointer-events: none;
+    /* エディタ画面と被らないよう背景は設定せず透過、親の枠内に収まる */
+  }
+  .show-settings .settings-view {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Modal Header (Adapted for Slide View) */
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--control-border);
+  }
+
+  .settings-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .back-btn {
+    background: var(--control-bg); border: 1px solid var(--control-border);
+    color: var(--text-main); cursor: pointer; padding: 6px 10px;
+    border-radius: 8px; display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-family: inherit; transition: all 0.2s ease;
+  }
+  .back-btn:hover { background: var(--item-hover-bg); }
+
+  /* Settings Content */
+  .settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .settings-content::-webkit-scrollbar { width: 4px; }
+  .settings-content::-webkit-scrollbar-thumb { background: var(--control-border); border-radius: 2px; }
+
+  .setting-group {
+    border-top: 1px solid var(--control-border);
+    padding-top: 16px;
+  }
+  .setting-group:first-child { border-top: none; padding-top: 0; }
+
+  .group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .setting-item:last-child { margin-bottom: 0; }
+
+  .setting-label {
+    font-size: 14px;
+    color: var(--text-main);
+  }
+
+  .setting-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* =========================================
+     Custom Controls
+  ========================================= */
+  
+  /* Toggle Switch */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+  }
+
+  .switch input { opacity: 0; width: 0; height: 0; }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--control-bg);
+    border: 1px solid var(--control-border);
+    transition: .3s var(--ease-out-expo);
+    border-radius: 20px;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    transition: .3s var(--ease-out-expo);
+    border-radius: 50%;
+  }
+
+  input:checked + .slider {
+    background-color: var(--accent);
+    border-color: transparent;
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(16px);
+    background-color: #fff;
+  }
+
+  /* Custom Select */
+  .custom-select {
+    position: relative;
+    font-size: 13px;
+    color: var(--text-main);
+  }
+
+  .custom-select select {
+    appearance: none;
+    background: var(--control-bg);
+    border: 1px solid var(--control-border);
+    padding: 6px 30px 6px 10px;
+    border-radius: 8px;
+    color: var(--text-main);
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .custom-select select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .custom-select:after {
+    content: "▼";
+    font-size: 9px;
+    color: var(--text-muted);
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  /* Range Slider */
+  .range-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .custom-range {
+    appearance: none;
+    width: 120px;
+    height: 4px;
+    background: var(--control-bg);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .custom-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+  }
+
+  .custom-range::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  /* =========================================
+     History Window (Dropdown)
+  ========================================= */
+  .history-window {
+    max-height: 0; opacity: 0; overflow: hidden; padding: 0;
+    transform: translateY(-10px); pointer-events: none;
+    transition: all 0.3s var(--ease-out-expo);
+  }
+  .history-window.active {
+    max-height: 280px; opacity: 1; padding: 12px;
+    transform: translateY(0); overflow-y: auto; pointer-events: auto;
+  }
+  .history-window::-webkit-scrollbar { display: none; }
+  
+  .history-item {
+    position: relative; padding: 14px 16px; margin-bottom: 6px;
+    border-radius: 10px; font-size: 14px; color: var(--text-muted);
+    cursor: pointer; background: transparent; transition: all 0.2s ease;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .history-item:last-child { margin-bottom: 0; }
+  .history-item.selected, .history-item:hover { background: var(--item-hover-bg); color: var(--text-main); }
+  .history-item::before {
+    content: ''; position: absolute; left: -2px; top: 20%; height: 60%; width: 3px;
+    background: var(--accent); border-radius: 4px; opacity: 0; box-shadow: 0 0 10px var(--accent-glow); transition: opacity 0.2s ease;
+  }
+  .history-item.selected::before, .history-item:hover::before { opacity: 1; }
+  .item-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 16px; }
+  
+  .delete-btn { background: transparent; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; opacity: 0; transition: opacity 0.2s ease; padding: 0; line-height: 1; }
+  .history-item:hover .delete-btn, .history-item.selected .delete-btn { opacity: 1; color: var(--text-muted); }
+  .delete-btn:hover { color: var(--danger) !important; }
+
+  /* =========================================
+     Toast
+  ========================================= */
+  .toast {
+    position: absolute; top: -40px; left: 50%;
+    transform: translateX(-50%) translateY(10px) scale(0.9);
+    background: var(--text-main); color: var(--app-bg);
+    padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    opacity: 0; pointer-events: none; box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    transition: all 0.3s var(--ease-out-expo); z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+  <div class="glass-panel main-window">
+    <div class="view-wrapper">
+      
+      <div class="view editor-view">
+        <div class="action-buttons">
+          <button class="icon-btn" id="openSettingsBtn" title="Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="editor-container-outer">
+          <div class="line-numbers" id="lineNumbers">1</div>
+          <div class="editor-container">
+            <div id="highlightLayer"></div>
+            <textarea id="mainTextarea" spellcheck="false" placeholder="Write something..."></textarea>
+          </div>
+        </div>
+
+        <div class="window-footer">
+          <div class="status-bar" id="statusBar">0 chars • 1 line</div>
+          <div class="hint-right">
+            <span class="shortcut">Ctrl+K</span> History
+            <span class="shortcut">Esc</span> Close
+            <span class="shortcut">Ctrl+Enter</span> Copy
+          </div>
+        </div>
+      </div>
+
+      <div class="view settings-view">
+        <div class="settings-header">
+          <button class="back-btn" id="backToEditorBtn" title="Back (Esc)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back
+          </button>
+          <div class="settings-title">Settings</div>
+          <div style="width: 70px;"></div></div>
+
+        <div class="settings-content">
+          <div class="setting-group">
+            <div class="group-title">Appearance</div>
+            <div class="setting-item">
+              <div class="setting-label">Theme</div>
+              <div class="setting-control custom-select">
+                <select id="themeSelect">
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">System</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="group-title">Behavior</div>
+            <div class="setting-item">
+              <div class="setting-label">History Limit</div>
+              <div class="setting-control range-control">
+                <input type="range" class="custom-range" id="historyLimitRange" min="10" max="200" step="10" value="100">
+                <span style="width: 32px; text-align: right;" id="historyLimitValue">100</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <div class="setting-label">Default Position</div>
+              <div class="setting-control custom-select">
+                <select id="positionSelect">
+                  <option value="center">Center</option>
+                  <option value="cursor">Cursor</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="group-title">System</div>
+            <div class="setting-item">
+              <div class="setting-label">Launch at Login</div>
+              <div class="setting-control">
+                <label class="switch">
+                  <input type="checkbox" id="launchAtLoginCheck" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="glass-panel history-window" id="historyWindow">
+    <div class="history-item"><span class="item-text"># 会議メモ&#10;- アジェンダ確認</span><button class="delete-btn">×</button></div>
+    <div class="history-item"><span class="item-text">買い物リスト&#10;- 牛乳&#10;- パン</span><button class="delete-btn">×</button></div>
+    <div class="history-item"><span class="item-text">**アイデア**&#10;> Markdownのテスト</span><button class="delete-btn">×</button></div>
+  </div>
+</div>
+
+<script>
+  const body = document.body;
+  const textarea = document.getElementById('mainTextarea');
+  const highlightLayer = document.getElementById('highlightLayer');
+  const lineNumbers = document.getElementById('lineNumbers');
+  const statusBar = document.getElementById('statusBar');
+  const toast = document.getElementById('toast');
+  const historyWindow = document.getElementById('historyWindow');
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const backToEditorBtn = document.getElementById('backToEditorBtn');
+
+  let historyItems = document.querySelectorAll('.history-item');
+  let currentIndex = -1;
+  let toastTimer;
+
+  // --- Theme Toggle & Settings applied ---
+  function showAppliedToast() {
+    clearTimeout(toastTimer);
+    toast.textContent = "Settings applied";
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  }
+
+  document.getElementById('themeSelect').addEventListener('change', (e) => {
+    if (e.target.value === 'dark') body.classList.add('dark-theme');
+    else body.classList.remove('dark-theme');
+    // トーストは出さない
+  });
+
+  const rangeInput = document.getElementById('historyLimitRange');
+  const rangeValue = document.getElementById('historyLimitValue');
+  rangeInput.addEventListener('input', (e) => { rangeValue.textContent = e.target.value; });
+  rangeInput.addEventListener('change', showAppliedToast);
+  document.getElementById('positionSelect').addEventListener('change', showAppliedToast);
+  document.getElementById('launchAtLoginCheck').addEventListener('change', showAppliedToast);
+
+  // --- Settings View Toggle ---
+  openSettingsBtn.addEventListener('click', () => {
+    body.classList.add('show-settings');
+    historyWindow.classList.remove('active'); // 設定を開いたら履歴は閉じる
+  });
+  backToEditorBtn.addEventListener('click', () => {
+    body.classList.remove('show-settings');
+    textarea.focus();
+  });
+
+  // --- Markdown Highlight & Stats ---
+  function applyMarkdown(text) {
+    if (!text) return '';
+    let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html = html.replace(/^(#{1,6})\s+(.*)$/gm, '<span class="md-heading">$1 $2</span>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<span class="md-bold">**$1**</span>');
+    html = html.replace(/\*(.*?)\*/g, '<span class="md-italic">*$1*</span>');
+    html = html.replace(/^(\s*[-*]|\s*\d+\.)\s+/gm, '<span class="md-list">$1 </span>');
+    html = html.replace(/^(\s*&gt;)\s+(.*)$/gm, '<span class="md-quote">$1 $2</span>');
+    html = html.replace(/`([^`\n]+)`/g, '<span class="md-code">`$1`</span>');
+    if (text.endsWith('\n')) html += ' ';
+    return html;
+  }
+
+  function updateEditor() {
+    const text = textarea.value;
+    highlightLayer.innerHTML = applyMarkdown(text);
+    
+    const chars = text.length;
+    const linesCount = (text.match(/\n/g) || []).length + 1;
+    statusBar.textContent = `${chars} chars • ${linesCount} line${linesCount > 1 ? 's' : ''}`;
+    
+    const lineNumbersHtml = Array.from({ length: linesCount }, (_, i) => i + 1).join('<br>');
+    if (lineNumbers.innerHTML !== lineNumbersHtml) lineNumbers.innerHTML = lineNumbersHtml;
+  }
+  textarea.addEventListener('input', updateEditor);
+
+  textarea.addEventListener('scroll', () => {
+    highlightLayer.scrollTop = textarea.scrollTop;
+    highlightLayer.scrollLeft = textarea.scrollLeft;
+    lineNumbers.scrollTop = textarea.scrollTop;
+  });
+
+  function showCopyToast() {
+    toast.textContent = "Copied to clipboard";
+    clearTimeout(toastTimer);
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  }
+
+  // --- History Logic ---
+  function updateHistorySelection() {
+    historyItems.forEach((item, i) => {
+      if(i === currentIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  // --- Keyboard & Global Shortcuts ---
+  document.addEventListener('keydown', (e) => {
+    const isSettingsOpen = body.classList.contains('show-settings');
+
+    // Esc: 設定を閉じる、履歴を閉じる、またはウィンドウを閉じる
+    if (e.key === 'Escape') {
+      if (isSettingsOpen) {
+        body.classList.remove('show-settings');
+        textarea.focus();
+        return;
+      }
+      if (historyWindow.classList.contains('active')) {
+        historyWindow.classList.remove('active');
+        currentIndex = -1;
+        return;
+      }
+      // Demo: Clear editor (simulating window close)
+      textarea.value = ''; updateEditor();
+      textarea.blur();
+      toast.textContent = "Saved & Closed";
+      clearTimeout(toastTimer);
+      toast.classList.add('show');
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+      return;
+    }
+
+    if (isSettingsOpen) return; // 以下はエディタ画面でのみ有効
+
+    // Ctrl+K: History Toggle
+    if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      historyWindow.classList.toggle('active');
+      if (historyWindow.classList.contains('active')) {
+        currentIndex = -1;
+        updateHistorySelection();
+      }
+      return;
+    }
+
+    // Ctrl+Enter: Copy
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      if(textarea.value.trim() !== '') {
+        navigator.clipboard.writeText(textarea.value);
+        showCopyToast();
+      }
+      return;
+    }
+
+    // History Navigation
+    if (historyWindow.classList.contains('active')) {
+      if (e.key === 'ArrowDown') { 
+        e.preventDefault(); currentIndex = currentIndex < historyItems.length - 1 ? currentIndex + 1 : 0; updateHistorySelection(); 
+      }
+      if (e.key === 'ArrowUp') { 
+        e.preventDefault(); currentIndex = currentIndex > 0 ? currentIndex - 1 : historyItems.length - 1; updateHistorySelection(); 
+      }
+      if (e.key === 'Enter' && !e.ctrlKey) {
+        e.preventDefault();
+        if(currentIndex >= 0) {
+          textarea.value = historyItems[currentIndex].querySelector('.item-text').innerHTML.replace(/&#10;/g, '\n');
+          historyWindow.classList.remove('active');
+          updateEditor(); textarea.focus(); currentIndex = -1;
+        }
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if(currentIndex >= 0 && historyItems.length > 0) {
+          e.preventDefault();
+          const itemToRemove = historyItems[currentIndex];
+          itemToRemove.style.opacity = '0';
+          itemToRemove.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            itemToRemove.remove();
+            historyItems = document.querySelectorAll('.history-item');
+            if(historyItems.length === 0) currentIndex = -1;
+            else if (currentIndex >= historyItems.length) currentIndex = historyItems.length - 1;
+            updateHistorySelection();
+          }, 200);
+        }
+      }
+    }
+  });
+
+  // History Mouse Events
+  historyItems.forEach((item, index) => {
+    item.addEventListener('click', (e) => {
+      if(e.target.classList.contains('delete-btn')) {
+        e.stopPropagation();
+        item.style.opacity = '0'; item.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          item.remove();
+          historyItems = document.querySelectorAll('.history-item');
+          if(currentIndex >= historyItems.length) currentIndex = historyItems.length - 1;
+          updateHistorySelection();
+        }, 200);
+        return;
+      }
+      textarea.value = item.querySelector('.item-text').innerHTML.replace(/&#10;/g, '\n');
+      historyWindow.classList.remove('active');
+      updateEditor(); textarea.focus(); currentIndex = -1;
+    });
+    item.addEventListener('mouseenter', () => {
+      historyItems = document.querySelectorAll('.history-item');
+      historyItems.forEach((it, i) => { if (it === item) currentIndex = i; });
+      updateHistorySelection();
+    });
+  });
+
+  // Init
+  setTimeout(() => textarea.focus(), 300);
+</script>
+</body>
+</html>
