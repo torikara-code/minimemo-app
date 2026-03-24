@@ -5,7 +5,7 @@ const store = new LazyStore("data.json");
 export interface Memo {
   id: string;
   content: string;
-  updated_at: number;
+  updated_at: string;
 }
 
 export interface MemoTemplate {
@@ -35,7 +35,17 @@ export interface AppData {
     showClipboardBtn?: boolean;
     showHistoryBtn?: boolean;
     showTodoBtn?: boolean;
+    showPreviewBtn?: boolean;
     autostart?: boolean;
+    showGrid?: boolean;
+    shortcuts?: {
+      show_hide: string;
+      new_memo: string;
+      toggle_history: string;
+      toggle_templates: string;
+      toggle_todo: string;
+      save_copy: string;
+    };
   };
 }
 

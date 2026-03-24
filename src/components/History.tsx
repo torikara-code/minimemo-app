@@ -1,18 +1,20 @@
 import { Component, For, createSignal, onMount, onCleanup, createMemo, createEffect } from "solid-js";
 import BackButton from "./BackButton";
-import { isHistoryOpen, memos, selectMemo, deleteMemo, closeHistory, t } from "../store/appStore";
+import { isHistoryOpen, memos, selectMemo, deleteMemo, closeHistory, t, clearAllMemos, sortedMemos } from "../store/appStore";
 
 const History: Component = () => {
   const [selectedIndex, setSelectedIndex] = createSignal(0);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [memoToDelete, setMemoToDelete] = createSignal<string | null>(null);
   const [modalSelectedIndex, setModalSelectedIndex] = createSignal(1); // 0 = Cancel, 1 = Delete
+  const [showClearAllModal, setShowClearAllModal] = createSignal(false);
   let searchInputRef: HTMLInputElement | undefined;
 
   const filteredMemos = createMemo(() => {
     const query = searchQuery().toLowerCase();
-    if (!query) return memos;
-    return memos.filter(m => m.content.toLowerCase().includes(query));
+    const list = sortedMemos();
+    if (!query) return list;
+    return list.filter(m => m.content.toLowerCase().includes(query));
   });
 
   // Auto-focus search input when history opens
@@ -66,9 +68,11 @@ const History: Component = () => {
         setModalSelectedIndex(1);
         return;
       }
-      // Block all other keys when modal is open
-      e.preventDefault();
-      e.stopPropagation();
+      // Block other keys only if no modifiers are pressed (allow global shortcuts)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
 
@@ -129,7 +133,7 @@ const History: Component = () => {
             ref={searchInputRef}
             type="text" 
             class="history-search-input" 
-            placeholder={t("search_placeholder")}
+            placeholder={t("search_memo_placeholder")}
             value={searchQuery()}
             onInput={(e) => {
               setSearchQuery(e.currentTarget.value);
@@ -137,7 +141,16 @@ const History: Component = () => {
             }}
           />
         </div>
-        <div></div>
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="icon-btn" onClick={() => setShowClearAllModal(true)} title={t("clear_all")} style="color: var(--text-muted); opacity: 0.6;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       
       <div class="settings-content history-list-content">
@@ -191,6 +204,20 @@ const History: Component = () => {
           <div class="confirm-modal-actions">
             <button class={`confirm-modal-btn cancel ${modalSelectedIndex() === 0 ? 'active' : ''}`} onClick={() => setMemoToDelete(null)}>{t("cancel")}</button>
             <button class={`confirm-modal-btn danger ${modalSelectedIndex() === 1 ? 'active' : ''}`} onClick={confirmDelete}>{t("delete")}</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Clear All Confirmation Modal */}
+      <div class={`confirm-modal-overlay ${showClearAllModal() ? 'show' : ''}`} onClick={() => setShowClearAllModal(false)}>
+        <div class="confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div class="confirm-modal-title">{t("clear_all")}</div>
+          <div class="confirm-modal-text">
+            {t("confirm_clear_all")}
+          </div>
+          <div class="confirm-modal-actions">
+            <button class="confirm-modal-btn cancel" onClick={() => setShowClearAllModal(false)}>{t("cancel")}</button>
+            <button class="confirm-modal-btn danger" onClick={() => { clearAllMemos(); setShowClearAllModal(false); }}>{t("delete")}</button>
           </div>
         </div>
       </div>

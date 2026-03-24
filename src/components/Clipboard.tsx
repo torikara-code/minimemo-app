@@ -62,9 +62,11 @@ const Clipboard: Component = () => {
         setModalSelectedIndex(1);
         return;
       }
-      // Block all other keys when modal is open
-      e.preventDefault();
-      e.stopPropagation();
+      // Block other keys only if no modifiers are pressed (allow global shortcuts)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
     const list = filteredTemplates();
@@ -206,7 +208,7 @@ const Clipboard: Component = () => {
 
       <div class="settings-content">
 
-        <div class={`category-tabs ${navTarget() === 'categories' ? 'focused' : ''}`} style={{ "margin-bottom": "8px" }}>
+        <div class={`category-tabs ${navTarget() === 'categories' ? 'focused' : ''}`} style={{ "margin-bottom": "4px" }}>
           <For each={categories()}>
             {(cat) => (
               <button 

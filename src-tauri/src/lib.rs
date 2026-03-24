@@ -1,7 +1,7 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 /// フロントエンドの初期描画完了後にウィンドウを表示するコマンド。
 /// 白フラッシュ（Ghost flash）を防ぐために visible: false で起動し、
@@ -21,6 +21,24 @@ fn show_ready_window(window: tauri::WebviewWindow) {
 #[tauri::command]
 fn hide_window(window: tauri::WebviewWindow) {
     window.hide().unwrap();
+}
+
+#[tauri::command]
+fn register_global_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<(), String> {
+    use std::str::FromStr;
+    let shortcut = Shortcut::from_str(&shortcut_str).map_err(|e| e.to_string())?;
+    
+    app.global_shortcut().register(shortcut).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn unregister_global_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<(), String> {
+    use std::str::FromStr;
+    let shortcut = Shortcut::from_str(&shortcut_str).map_err(|e| e.to_string())?;
+    
+    app.global_shortcut().unregister(shortcut).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// Windows 固有: DWM 角丸 + Layered ウィンドウ透過設定を適用。
@@ -73,17 +91,15 @@ fn apply_windows_glass(hwnd_raw: isize) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let ctrl_m = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyM);
-    let ctrl_m_clone = ctrl_m.clone();
-
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, shortcut, event| {
-                    if event.state() == ShortcutState::Pressed && shortcut == &ctrl_m_clone {
+                .with_handler(move |app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
                         if let Some(window) = app.get_webview_window("main") {
                             let is_minimized = window.is_minimized().unwrap_or(false);
                             let is_visible = window.is_visible().unwrap_or(false);
@@ -122,12 +138,8 @@ pub fn run() {
                 }
             }
 
-            // グローバルショートカット登録
-            if let Err(e) = app.global_shortcut().register(ctrl_m) {
-                // Ignore "already registered" error or log it
-                // This can happen during dev hot-reloads
-                println!("Global shortcut registration info: {}", e);
-            }
+            // グローバルショートカットの初期登録はフロントエンド（Store）側で
+            // 保存された設定に基づいて行う。
 
             // トレイアイコン設定
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
@@ -152,7 +164,7 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
+                    if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
                             #[cfg(target_os = "windows")]
@@ -168,7 +180,12 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![hide_window, show_ready_window])
+        .invoke_handler(tauri::generate_handler![
+            hide_window, 
+            show_ready_window,
+            register_global_shortcut,
+            unregister_global_shortcut
+        ])
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 window.hide().unwrap();

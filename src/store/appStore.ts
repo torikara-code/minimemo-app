@@ -5,12 +5,13 @@ import { Locale, translations } from "../i18n/locales";
 
 // Global Signals
 const [text, setText] = createSignal("");
-const [theme, setTheme] = createSignal<"light" | "dark" | "system">("light");
+const [theme, setTheme] = createSignal<"light" | "dark" | "system" | "architect" | "architect_dark" | "botanist" | "coast" | "forest" | "ocean">("light");
 const [opacity, setOpacity] = createSignal(100); // 初期値：完全に不透明 (100)
 const [isHistoryOpen, setHistoryOpen] = createSignal(false);
 const [isClipboardOpen, setClipboardOpen] = createSignal(false);
 const [isTodoOpen, setTodoOpen] = createSignal(false);
 const [isShortcutsOpen, setShortcutsOpen] = createSignal(false);
+const [showPreview, setShowPreview] = createSignal(false);
 const [isPinned, setPinned] = createSignal(false);
 const [focusTrigger, setFocusTrigger] = createSignal(0);
 const [visualLinesCount, setVisualLinesCount] = createSignal(1);
@@ -22,13 +23,34 @@ const [activeMemoId, setActiveMemoId] = createSignal<string | null>(null);
 const [isMaximized, setIsMaximized] = createSignal(false);
 const [showSettings, setShowSettings] = createSignal(false);
 const [language, setLanguage] = createSignal<Locale>("ja");
+const [showSearch, setShowSearch] = createSignal(false);
+const [focusSearchTrigger, setFocusSearchTrigger] = createSignal(0);
 const [editingTemplateId, setEditingTemplateId] = createSignal<string | null>(null);
 const [editingTemplateMeta, setEditingTemplateMeta] = createSignal<{ label: string, category: string }>({ label: "", category: "General" });
 const [showNewMemoBtn, setShowNewMemoBtn] = createSignal(true);
-const [showClipboardBtn, setShowClipboardBtn] = createSignal(true);
-const [showHistoryBtn, setShowHistoryBtn] = createSignal(true);
-const [showTodoBtn, setShowTodoBtn] = createSignal(true);
+const [showClipboardBtn, setShowClipboardBtn] = createSignal(false);
+const [showHistoryBtn, setShowHistoryBtn] = createSignal(false);
+const [showTodoBtn, setShowTodoBtn] = createSignal(false);
+const [showPreviewBtn, setShowPreviewBtn] = createSignal(true);
 const [isAutostart, setIsAutostart] = createSignal(false);
+const [recordingKey, setRecordingKey] = createSignal<string | null>(null);
+const [showGrid, setShowGrid] = createSignal(false);
+const [isCommandMenuOpen, setIsCommandMenuOpen] = createSignal(false);
+const [commandMenuQuery, setCommandMenuQuery] = createSignal("");
+const [commandMenuPosition, setCommandMenuPosition] = createSignal({ x: 0, y: 0 });
+
+const defaultShortcuts = {
+  show_hide: "Ctrl+M",
+  new_memo: "Ctrl+N",
+  toggle_history: "Ctrl+K",
+  toggle_templates: "Ctrl+L",
+  toggle_todo: "Ctrl+J",
+  toggle_preview: "Ctrl+P",
+  toggle_search: "Ctrl+F",
+  save_copy: "Ctrl+Enter"
+};
+
+const [shortcuts, setShortcuts] = createStore({ ...defaultShortcuts });
 
 /**
  * i18n トランスレーション関数
@@ -52,6 +74,15 @@ function showToast(msg: string) {
 }
 
 /**
+ * ピン留め優先でソートされたメモ一覧
+ */
+const sortedMemos = createMemo(() => {
+  return [...memos].sort((a, b) => {
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+});
+
+/**
  * 現在の状態を永続化する
  */
 async function persistCurrentState() {
@@ -68,7 +99,10 @@ async function persistCurrentState() {
       showClipboardBtn: showClipboardBtn(),
       showHistoryBtn: showHistoryBtn(),
       showTodoBtn: showTodoBtn(),
-      autostart: isAutostart()
+      showPreviewBtn: showPreviewBtn(),
+      autostart: isAutostart(),
+      showGrid: showGrid(),
+      shortcuts: { ...shortcuts }
     }
   });
 }
@@ -94,7 +128,20 @@ const initializeStore = async () => {
     if (savedData.settings?.showClipboardBtn !== undefined) setShowClipboardBtn(savedData.settings.showClipboardBtn);
     if (savedData.settings?.showHistoryBtn !== undefined) setShowHistoryBtn(savedData.settings.showHistoryBtn);
     if (savedData.settings?.showTodoBtn !== undefined) setShowTodoBtn(savedData.settings.showTodoBtn);
+    if (savedData.settings?.showPreviewBtn !== undefined) setShowPreviewBtn(savedData.settings.showPreviewBtn);
     if (savedData.settings?.autostart !== undefined) setIsAutostart(savedData.settings.autostart);
+    if ((savedData.settings as any)?.showGrid !== undefined) setShowGrid((savedData.settings as any).showGrid);
+    if (savedData.settings?.shortcuts) {
+      setShortcuts({ ...defaultShortcuts, ...savedData.settings.shortcuts });
+    }
+    
+    // Global shortcut registration
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("register_global_shortcut", { shortcutStr: shortcuts.show_hide.toLowerCase() });
+    } catch (e) {
+      console.error("Failed to register initial global shortcut:", e);
+    }
   } else {
     const initialTemplates: MemoTemplate[] = [
       { id: "1", label: "挨拶", content: "お疲れ様です。よろしくお願いいたします。", category: "メール" },
@@ -109,39 +156,54 @@ const saveToHistory = async () => {
   const currentText = text().trim();
   if (currentText === "") return;
 
-  const now = Date.now();
-  const memoId = activeMemoId();
-  
-  let nextMemos;
-  if (memoId) {
-    const otherMemos = memos.filter(m => m.id !== memoId);
-    nextMemos = [{ id: memoId, content: currentText, updated_at: now }, ...otherMemos].slice(0, 200);
+  const now = new Date().toISOString();
+  if (activeMemoId()) {
+    setMemos(
+      m => m.id === activeMemoId(), 
+      { 
+        content: currentText, 
+        updated_at: now
+      }
+    );
   } else {
-    const newId = now.toString();
-    nextMemos = [{ id: newId, content: currentText, updated_at: now }, ...memos].slice(0, 200);
+    const newId = Date.now().toString();
+    const newMemo: Memo = {
+      id: newId, 
+      content: currentText, 
+      updated_at: now
+    };
+    setMemos([newMemo, ...memos].slice(0, 200));
     setActiveMemoId(newId);
   }
 
-  setMemos(nextMemos);
   await persistCurrentState();
 };
 
 const createNewMemo = async () => {
-  if (text().trim() !== "") {
-    await saveToHistory();
-    showToast("現在の内容を履歴に保存しました");
+  if (text().trim() === "") {
+    showToast(t("t_no_content"));
+    return;
   }
+  await saveToHistory();
+  showToast(t("t_saved_history"));
   setText("");
   setActiveMemoId(null);
   setFocusTrigger(t => t + 1);
 };
 
 const deleteMemo = async (id: string) => {
-  const nextMemos = memos.filter(m => m.id !== id);
-  setMemos(nextMemos);
+  setMemos(memos.filter(m => m.id !== id));
   if (activeMemoId() === id) setActiveMemoId(null);
   await persistCurrentState();
-  showToast("メモを削除しました");
+  showToast(t("t_deleted") || "メモを削除しました");
+};
+
+const clearAllMemos = async () => {
+  setMemos([]);
+  setActiveMemoId(null);
+  setText("");
+  await persistCurrentState();
+  showToast(t("t_all_deleted") || "すべてのメモを削除しました");
 };
 
 const startTemplateEdit = (template?: any) => {
@@ -211,6 +273,45 @@ const deleteTemplate = async (id: string) => {
   showToast("テンプレートを削除しました");
 };
 
+const updateShortcut = async (key: keyof typeof shortcuts, newValue: string) => {
+  if (key === "show_hide") {
+    const { invoke } = await import("@tauri-apps/api/core");
+    try {
+      await invoke("unregister_global_shortcut", { shortcutStr: shortcuts.show_hide.toLowerCase() });
+    } catch (e) {
+      console.warn("Could not unregister old shortcut:", e);
+    }
+    try {
+      await invoke("register_global_shortcut", { shortcutStr: newValue.toLowerCase() });
+    } catch (e) {
+      showToast("そのキーは使用できません");
+      return;
+    }
+  }
+  
+  setShortcuts(key, newValue);
+  await persistCurrentState();
+  showToast("ショートカットを更新しました");
+};
+
+const resetShortcuts = async () => {
+  const { invoke } = await import("@tauri-apps/api/core");
+  // Unregister current global
+  try {
+    await invoke("unregister_global_shortcut", { shortcutStr: shortcuts.show_hide.toLowerCase() });
+  } catch (e) { console.warn(e); }
+
+  setShortcuts(defaultShortcuts);
+
+  // Register default global
+  try {
+    await invoke("register_global_shortcut", { shortcutStr: defaultShortcuts.show_hide.toLowerCase() });
+  } catch (e) { console.error(e); }
+
+  await persistCurrentState();
+  showToast(t("sc_reset"));
+};
+
 // -- TODO ACTIONS --
 
 const addTodo = async (text: string) => {
@@ -229,6 +330,44 @@ const addTodo = async (text: string) => {
 const toggleTodo = async (id: string) => {
   setTodos(t => t.id === id, "completed", c => !c);
   await persistCurrentState();
+};
+
+const isShortcutPressed = (shortcutStr: string, e: KeyboardEvent) => {
+  const parts = shortcutStr.split("+").map(p => p.toLowerCase());
+  const hasCtrl = parts.includes("ctrl");
+  const hasShift = parts.includes("shift");
+  const hasAlt = parts.includes("alt");
+  const hasMeta = parts.includes("meta") || parts.includes("command");
+  const mainKey = parts[parts.length - 1];
+
+  const eCtrl = e.ctrlKey;
+  const eShift = e.shiftKey;
+  const eAlt = e.altKey;
+  const eMeta = e.metaKey;
+  const eKey = e.key.toLowerCase();
+  const eCode = e.code.toLowerCase().replace("key", "");
+
+  return (
+    hasCtrl === eCtrl &&
+    hasShift === eShift &&
+    hasAlt === eAlt &&
+    hasMeta === eMeta &&
+    (eKey === mainKey || eCode === mainKey)
+  );
+};
+
+const eventToShortcutString = (e: KeyboardEvent) => {
+  const parts: string[] = [];
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.altKey) parts.push("Alt");
+  if (e.metaKey) parts.push("Meta");
+  
+  const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  if (!["Control", "Shift", "Alt", "Meta", "CapsLock"].includes(key)) {
+    parts.push(key);
+  }
+  return parts.join("+");
 };
 
 const deleteTodo = async (id: string) => {
@@ -291,6 +430,18 @@ const closeSettings = () => {
   setShowSettings(false);
 };
 
+const toggleSearch = () => {
+  const next = !showSearch();
+  setShowSearch(next);
+  if (next) {
+    setFocusSearchTrigger(t => t + 1);
+  }
+};
+
+const closeSearch = () => {
+  setShowSearch(false);
+};
+
 const hideAndResetApp = async () => {
   const currentText = text().trim();
   if (currentText !== "") {
@@ -299,6 +450,11 @@ const hideAndResetApp = async () => {
   // Reset for next time
   setText("");
   setActiveMemoId(null);
+  setHistoryOpen(false);
+  setClipboardOpen(false);
+  setTodoOpen(false);
+  setShowSettings(false);
+  setShowPreview(false);
   
   const { hideWindow } = await import("../api/tauri");
   await hideWindow();
@@ -312,21 +468,22 @@ createEffect(on(text, (currentText) => {
   if (saveTimeout) clearTimeout(saveTimeout);
   
   saveTimeout = setTimeout(async () => {
-    let nextMemos = [...memos];
-    const memoId = activeMemoId();
-    const now = Date.now();
-
-    if (trimmed !== "") {
-      if (memoId) {
-        const otherMemos = nextMemos.filter(m => m.id !== memoId);
-        nextMemos = [{ id: memoId, content: trimmed, updated_at: now }, ...otherMemos].slice(0, 100);
+      const now = new Date().toISOString();
+      if (activeMemoId()) {
+        setMemos(m => m.id === activeMemoId(), { 
+          content: trimmed, 
+          updated_at: now,
+        });
       } else {
-        const newId = now.toString();
-        nextMemos = [{ id: newId, content: trimmed, updated_at: now }, ...nextMemos].slice(0, 100);
+        const newId = Date.now().toString();
+        const newMemo: Memo = {
+          id: newId, 
+          content: trimmed, 
+          updated_at: now,
+        };
+        setMemos([newMemo, ...memos].slice(0, 100));
         setActiveMemoId(newId);
       }
-      setMemos(nextMemos);
-    }
     await persistCurrentState();
   }, 500);
 }, { defer: true }));
@@ -340,6 +497,7 @@ createEffect(on(opacity, async () => {
 export { 
   text, setText, isHistoryOpen, setHistoryOpen, 
   isClipboardOpen, setClipboardOpen,
+  showPreview, setShowPreview,
   isPinned, setPinned, 
   focusTrigger, setFocusTrigger, memos, setMemos, 
   templates, setTemplates,
@@ -353,14 +511,22 @@ export {
   closeHistory, closeClipboard, closeSettings,
   language, setLanguage, t,
   activeMemoId, setActiveMemoId,
+  showGrid, setShowGrid,
   editingTemplateId, setEditingTemplateId,
   editingTemplateMeta, setEditingTemplateMeta,
   stats,
   initializeStore, saveToHistory, createNewMemo, deleteMemo,
+  clearAllMemos, sortedMemos,
   startTemplateEdit, cancelTemplateEdit, saveTemplate, deleteTemplate, selectMemo,
   addTodo, toggleTodo, deleteTodo, clearCompletedTodos, isTodoOpen, setTodoOpen, closeTodo,
+  isCommandMenuOpen, setIsCommandMenuOpen, commandMenuQuery, setCommandMenuQuery, commandMenuPosition, setCommandMenuPosition,
   showNewMemoBtn, setShowNewMemoBtn, showClipboardBtn, setShowClipboardBtn,
   showHistoryBtn, setShowHistoryBtn, showTodoBtn, setShowTodoBtn,
+  showPreviewBtn, setShowPreviewBtn,
   isAutostart, setIsAutostart,
-  hideAndResetApp
+  recordingKey, setRecordingKey,
+  shortcuts, setShortcuts, updateShortcut, resetShortcuts, isShortcutPressed, eventToShortcutString,
+  hideAndResetApp,
+  showSearch, setShowSearch, focusSearchTrigger, setFocusSearchTrigger,
+  toggleSearch, closeSearch
 };
