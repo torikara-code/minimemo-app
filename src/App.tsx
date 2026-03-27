@@ -7,7 +7,7 @@ import Todo from "./components/Todo";
 import BackButton from "./components/BackButton";
 import CommandMenu from "./components/CommandMenu";
 import { 
-  theme, showToast, showSettings, setShowSettings, opacity, t,
+  theme, toggleTheme, showToast, showSettings, setShowSettings, opacity, t,
   showNewMemoBtn, showClipboardBtn, showHistoryBtn, showTodoBtn, showPreviewBtn,
   isHistoryOpen, setHistoryOpen, isClipboardOpen, setClipboardOpen,
   isTodoOpen, setTodoOpen, showPreview, setShowPreview,
@@ -178,6 +178,13 @@ const App: Component = () => {
       e.preventDefault();
       e.stopImmediatePropagation();
       toggleSearch();
+      return;
+    }
+
+    if (isShortcutPressed(shortcuts.toggle_theme, e)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      toggleTheme();
       return;
     }
   };
@@ -488,6 +495,10 @@ const App: Component = () => {
               <div class="shortcut-row">
                 <span class="shortcut-key">Ctrl + P</span>
                 <span class="shortcut-desc">{t("sc_preview")}</span>
+              </div>
+              <div class="shortcut-row">
+                <span class="shortcut-key">{shortcuts.toggle_theme}</span>
+                <span class="shortcut-desc">{t("sc_toggle_theme")}</span>
               </div>
 
               <div class="shortcut-divider"></div>

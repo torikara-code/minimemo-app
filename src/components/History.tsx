@@ -1,6 +1,6 @@
-import { Component, For, createSignal, onMount, onCleanup, createMemo, createEffect } from "solid-js";
+import { Component, For, createSignal, onMount, onCleanup, createMemo, createEffect, Show } from "solid-js";
 import BackButton from "./BackButton";
-import { isHistoryOpen, memos, selectMemo, deleteMemo, closeHistory, t, clearAllMemos, sortedMemos } from "../store/appStore";
+import { isHistoryOpen, memos, selectMemo, deleteMemo, closeHistory, t, clearAllMemos, sortedMemos, activeMemoId } from "../store/appStore";
 
 const History: Component = () => {
   const [selectedIndex, setSelectedIndex] = createSignal(0);
@@ -166,6 +166,9 @@ const History: Component = () => {
                   <div class="item-preview-text">{memo.content.replace(/\n/g, ' ')}</div>
                   <div class="item-meta">
                     {new Date(memo.updated_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    <Show when={memo.id === activeMemoId()}>
+                      <span class="editing-badge">{t("editing_indicator")}</span>
+                    </Show>
                   </div>
                 </div>
                 <div class="item-actions">

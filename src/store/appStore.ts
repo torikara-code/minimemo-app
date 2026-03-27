@@ -47,7 +47,8 @@ const defaultShortcuts = {
   toggle_todo: "Ctrl+J",
   toggle_preview: "Ctrl+P",
   toggle_search: "Ctrl+F",
-  save_copy: "Ctrl+Enter"
+  save_copy: "Ctrl+Enter",
+  toggle_theme: "Ctrl+T"
 };
 
 const [shortcuts, setShortcuts] = createStore({ ...defaultShortcuts });
@@ -193,7 +194,10 @@ const createNewMemo = async () => {
 
 const deleteMemo = async (id: string) => {
   setMemos(memos.filter(m => m.id !== id));
-  if (activeMemoId() === id) setActiveMemoId(null);
+  if (activeMemoId() === id) {
+    setActiveMemoId(null);
+    setText("");
+  }
   await persistCurrentState();
   showToast(t("t_deleted") || "メモを削除しました");
 };
@@ -430,6 +434,17 @@ const closeSettings = () => {
   setShowSettings(false);
 };
 
+const themes = ["light", "dark", "system", "architect", "architect_dark", "botanist", "coast", "forest", "ocean"] as const;
+
+const toggleTheme = () => {
+  const currentTheme = theme();
+  const currentIndex = themes.indexOf(currentTheme as any);
+  const nextIndex = (currentIndex + 1) % themes.length;
+  const nextTheme = themes[nextIndex];
+  setTheme(nextTheme);
+  showToast(t("theme_applied"));
+};
+
 const toggleSearch = () => {
   const next = !showSearch();
   setShowSearch(next);
@@ -464,8 +479,10 @@ const hideAndResetApp = async () => {
 let saveTimeout: any;
 createEffect(on(text, (currentText) => {
   if (editingTemplateId()) return;
-  const trimmed = currentText.trim();
   if (saveTimeout) clearTimeout(saveTimeout);
+  
+  const trimmed = currentText.trim();
+  if (trimmed === "") return;
   
   saveTimeout = setTimeout(async () => {
       const now = new Date().toISOString();
@@ -503,7 +520,7 @@ export {
   templates, setTemplates,
   todos, setTodos,
   toastMessage, showToast,
-  theme, setTheme, isMaximized, setIsMaximized,
+  theme, setTheme, toggleTheme, isMaximized, setIsMaximized,
   showSettings, setShowSettings,
   isShortcutsOpen, setShortcutsOpen,
   opacity, setOpacity,

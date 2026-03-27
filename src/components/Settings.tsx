@@ -242,6 +242,7 @@ const Settings: Component = () => {
           <ShortcutItem label={t("sc_todo")} shortcutKey="toggle_todo" />
           <ShortcutItem label={t("sc_save_hide")} shortcutKey="save_copy" />
           <ShortcutItem label={t("sc_preview")} shortcutKey="toggle_preview" />
+          <ShortcutItem label={t("sc_toggle_theme")} shortcutKey="toggle_theme" />
           
           <div class="setting-item" style={{ "margin-top": "8px", "justify-content": "center" }}>
             <button 

@@ -832,6 +832,21 @@ input:checked + .slider:before { transform: translateX(16px); }
   white-space: normal;
   line-height: 1.4;
 }
+.editing-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
 
 .item-actions {
   display: flex;

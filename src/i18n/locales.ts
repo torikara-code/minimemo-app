@@ -105,6 +105,7 @@ export const translations = {
     sc_save_reset: "Save & Reset & Close",
     sc_close_cancel: "Close / Cancel",
     sc_search: "Search / Replace",
+    sc_toggle_theme: "Cycle Themes",
     sc_help: "Shortcut Help",
     sc_enter: "Open / Select",
     sc_del: "Delete Item",
@@ -126,7 +127,8 @@ export const translations = {
     // Stats
     chars: "chars",
     lines: "lines",
-    line: "line"
+    line: "line",
+    editing_indicator: "Editing"
   },
   ja: {
     // Titlebar & Tooltips
@@ -232,6 +234,7 @@ export const translations = {
     sc_save_reset: "保存・リセットして終了",
     sc_close_cancel: "閉じる / キャンセル",
     sc_search: "検索 / 置換",
+    sc_toggle_theme: "テーマの切り替え",
     sc_help: "ショートカットヘルプ",
     sc_enter: "決定 / 開く",
     sc_del: "項目を削除",
@@ -253,7 +256,8 @@ export const translations = {
     // Stats
     chars: "文字",
     lines: "行",
-    line: "行"
+    line: "行",
+    editing_indicator: "編集中"
   },
   zh: {
     // Titlebar & Tooltips
@@ -359,6 +363,7 @@ export const translations = {
     sc_save_reset: "保存、重置并关闭",
     sc_close_cancel: "关闭 / 取消",
     sc_search: "查找 / 替换",
+    sc_toggle_theme: "切换主题",
     sc_help: "快捷键帮助",
     sc_enter: "确定 / 打开",
     sc_del: "删除项目",
@@ -380,6 +385,7 @@ export const translations = {
     // Stats
     chars: "字符",
     lines: "行",
-    line: "行"
+    line: "行",
+    editing_indicator: "编辑中"
   }
 };
